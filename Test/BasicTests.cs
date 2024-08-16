@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Flurl.Http.Testing;
 using Polly;
+using Polly.Retry;
 using PollyFlurl;
 using Xunit.Abstractions;
 
@@ -26,65 +27,77 @@ public class BasicTests
     }
 
     [Fact]
-    public async Task CustomPolicy_HandleHTTPResponseMessage()
+    public async Task CustomPipeline_HandleHTTPResponseMessage()
     {
         using var httpTest = new HttpTest();
         httpTest.RespondWith("Bad Request", status: 500);
         httpTest.RespondWith("", status: 200);
 
-        var policy = Policy
-            .HandleResult<HttpResponseMessage>(message =>
+        var pipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
+            .AddRetry(new RetryStrategyOptions<HttpResponseMessage>()
             {
-                var content = message.Content.ReadAsStringAsync().Result;
-                return content == "Bad Request";
+                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                    .HandleResult(message =>
+                    {
+                        var content = message.Content.ReadAsStringAsync().Result;
+                        return content == "Bad Request";
+                    })
             })
-            .RetryAsync();
+            .Build();
 
         var response = await "http://www.google.com"
-            .WithPolicy(policy)
+            .WithPipeline(pipeline)
             .GetAsync();
         response.StatusCode.Should().Be(200);
     }
 
     [Fact]
-    public async Task CustomPolicy_HandleResponse()
+    public async Task CustomPipeline_HandleResponse()
     {
         using var httpTest = new HttpTest();
         httpTest.RespondWith("Bad Request", status: 500);
         httpTest.RespondWith("", status: 200);
 
-        var policy = Policy
-            .HandleResult<IFlurlResponse>(message =>
+        var pipeline = new ResiliencePipelineBuilder<IFlurlResponse>()
+            .AddRetry(new RetryStrategyOptions<IFlurlResponse>()
             {
-                var content = message.GetStringAsync().Result;
-                return content == "Bad Request";
+                ShouldHandle = new PredicateBuilder<IFlurlResponse>()
+                    .HandleResult(message =>
+                    {
+                        var content = message.GetStringAsync().Result;
+                        return content == "Bad Request";
+                    })
             })
-            .RetryAsync();
+            .Build();
 
         var response = await "http://www.google.com"
             .AllowAnyHttpStatus() // otherwise raised as an exception
-            .WithPolicy(policy)
+            .WithPipeline(pipeline)
             .GetAsync();
         response.StatusCode.Should().Be(200);
     }
 
     [Fact]
-    public async Task CustomPolicy_HandleException()
+    public async Task CustomPipeline_HandleException()
     {
         using var httpTest = new HttpTest();
         httpTest.RespondWith("Bad Request", status: 500);
         httpTest.RespondWith("", status: 200);
 
-        var policy = Policy
-            .Handle<FlurlHttpException>(ex =>
+        var pipeline = new ResiliencePipelineBuilder()
+            .AddRetry(new RetryStrategyOptions()
             {
-                var content = ex.Call.Response.GetStringAsync().Result;
-                return content == "Bad Request";
+                ShouldHandle = new PredicateBuilder()
+                    .Handle<FlurlHttpException>(ex =>
+                    {
+                        var content = ex.Call.Response.GetStringAsync().Result;
+                        return content == "Bad Request";
+                    })
             })
-            .RetryAsync();
+            .Build();
 
         var response = await "http://www.google.com"
-            .WithPolicy(policy)
+            .WithPipeline(pipeline)
             .GetAsync();
         response.StatusCode.Should().Be(200);
     }

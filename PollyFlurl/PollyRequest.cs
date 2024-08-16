@@ -25,47 +25,51 @@ internal abstract class RequestWrapper : IFlurlRequest
     public abstract Task<IFlurlResponse> SendAsync(HttpMethod verb, HttpContent? content = null, HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead, CancellationToken cancellationToken = default);
 }
 
-/// <summary> Wrap a flurl request policy</summary>
+/// <summary> Wrap a flurl request pipeline</summary>
 internal class PollyRequestFlurlResponse : RequestWrapper
 {
-    private readonly IAsyncPolicy<IFlurlResponse> policy;
+    private readonly ResiliencePipeline<IFlurlResponse> pipeline;
 
-    public PollyRequestFlurlResponse(IFlurlRequest innerRequest, IAsyncPolicy<IFlurlResponse> policy) : base(innerRequest)
+    public PollyRequestFlurlResponse(IFlurlRequest innerRequest, ResiliencePipeline<IFlurlResponse> pipeline) : base(innerRequest)
     {
-        this.policy = policy;
-    }
-
-    public override Task<IFlurlResponse> SendAsync(HttpMethod verb, HttpContent? content = null, HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead, CancellationToken cancellationToken = default) =>
-        policy.ExecuteAsync(() => innerRequest.SendAsync(verb, content, completionOption, cancellationToken));
-}
-
-/// <summary> Wrap a generic policy </summary>
-internal class PollyRequest : RequestWrapper
-{
-    private readonly IAsyncPolicy policy;
-
-    public PollyRequest(IFlurlRequest innerRequest, IAsyncPolicy policy) : base(innerRequest)
-    {
-        this.policy = policy;
-    }
-
-    public override Task<IFlurlResponse> SendAsync(HttpMethod verb, HttpContent? content = null, HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead, CancellationToken cancellationToken = default) =>
-        policy.ExecuteAsync(() => innerRequest.SendAsync(verb, content, completionOption, cancellationToken));
-}
-
-/// <summary> Wrap a http response policy </summary>
-internal class PollyHttpResponseRequest : RequestWrapper
-{
-    private readonly IAsyncPolicy<HttpResponseMessage> policy;
-
-    public PollyHttpResponseRequest(IFlurlRequest innerRequest, IAsyncPolicy<HttpResponseMessage> policy) : base(innerRequest)
-    {
-        this.policy = policy;
+        this.pipeline = pipeline;
     }
 
     public override async Task<IFlurlResponse> SendAsync(HttpMethod verb, HttpContent? content = null, HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead, CancellationToken cancellationToken = default)
     {
-        var response = await policy.ExecuteAsync(async () =>
+        return await pipeline.ExecuteAsync(async cancellationToken => await innerRequest.SendAsync(verb, content, completionOption, cancellationToken));
+    }
+}
+
+/// <summary> Wrap a generic pipeline </summary>
+internal class PollyRequest : RequestWrapper
+{
+    private readonly ResiliencePipeline pipeline;
+
+    public PollyRequest(IFlurlRequest innerRequest, ResiliencePipeline pipeline) : base(innerRequest)
+    {
+        this.pipeline = pipeline;
+    }
+
+    public override async Task<IFlurlResponse> SendAsync(HttpMethod verb, HttpContent? content = null, HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead, CancellationToken cancellationToken = default)
+    {
+        return await pipeline.ExecuteAsync(async cancellationToken => await innerRequest.SendAsync(verb, content, completionOption, cancellationToken));
+    }
+}
+
+/// <summary> Wrap a http response pipeline </summary>
+internal class PollyHttpResponseRequest : RequestWrapper
+{
+    private readonly ResiliencePipeline<HttpResponseMessage> pipeline;
+
+    public PollyHttpResponseRequest(IFlurlRequest innerRequest, ResiliencePipeline<HttpResponseMessage> pipeline) : base(innerRequest)
+    {
+        this.pipeline = pipeline;
+    }
+
+    public override async Task<IFlurlResponse> SendAsync(HttpMethod verb, HttpContent? content = null, HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead, CancellationToken cancellationToken = default)
+    {
+        var response = await pipeline.ExecuteAsync(async cancellationToken =>
         {
             try
             {
