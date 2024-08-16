@@ -123,9 +123,11 @@ public class BasicTests
             })
             .RetryAsync();
 
+#pragma warning disable CS0618 // ".WithPolicy()" is obsolete
         var response = await "http://www.google.com"
             .WithPolicy(policy)
             .GetAsync();
+#pragma warning restore CS0618 // ".WithPolicy()" is obsolete
         response.StatusCode.Should().Be(200);
     }
 
@@ -144,10 +146,12 @@ public class BasicTests
             })
             .RetryAsync();
 
+#pragma warning disable CS0618 // ".WithPolicy()" is obsolete
         var response = await "http://www.google.com"
             .AllowAnyHttpStatus() // otherwise raised as an exception
             .WithPolicy(policy)
             .GetAsync();
+#pragma warning restore CS0618 // ".WithPolicy()" is obsolete
         response.StatusCode.Should().Be(200);
     }
 
@@ -166,9 +170,11 @@ public class BasicTests
             })
             .RetryAsync();
 
+#pragma warning disable CS0618 // ".WithPolicy()" is obsolete
         var response = await "http://www.google.com"
             .WithPolicy(policy)
             .GetAsync();
+#pragma warning restore CS0618 // ".WithPolicy()" is obsolete
         response.StatusCode.Should().Be(200);
     }
 
