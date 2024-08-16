@@ -55,22 +55,33 @@ public static class PollyFlurlExtensions
 
     #region Policy (legacy)
 
+    const string WithPolicyObsoleteWarning = @"Use "".WithPipeline(ResiliencePipeline pipeline)"" instead. See Polly v8's doc for more info: https://www.pollydocs.org/migration-v8.html#configuring-strategies-in-v8";
+
+    [Obsolete(WithPolicyObsoleteWarning)]
     public static IFlurlRequest WithPolicy(this string request, IAsyncPolicy<IFlurlResponse> policy) => WithPolicy(new Url(request), policy);
+    [Obsolete(WithPolicyObsoleteWarning)]
     public static IFlurlRequest WithPolicy(this Url request, IAsyncPolicy<IFlurlResponse> policy) => WithPolicy(new FlurlRequest(request), policy);
+    [Obsolete(WithPolicyObsoleteWarning)]
     public static IFlurlRequest WithPolicy(this IFlurlRequest request, IAsyncPolicy<IFlurlResponse> policy)
     {
         return new PollyPolicyRequestFlurlResponse(request, policy);
     }
 
+    [Obsolete(WithPolicyObsoleteWarning)]
     public static IFlurlRequest WithPolicy(this string request, IAsyncPolicy policy) => WithPolicy(new Url(request), policy);
+    [Obsolete(WithPolicyObsoleteWarning)]
     public static IFlurlRequest WithPolicy(this Url request, IAsyncPolicy policy) => WithPolicy(new FlurlRequest(request), policy);
+    [Obsolete(WithPolicyObsoleteWarning)]
     public static IFlurlRequest WithPolicy(this IFlurlRequest request, IAsyncPolicy policy)
     {
         return new PollyPolicyRequest(request, policy);
     }
 
+    [Obsolete(WithPolicyObsoleteWarning)]
     public static IFlurlRequest WithPolicy(this string request, IAsyncPolicy<HttpResponseMessage> policy) => WithPolicy(new Url(request), policy);
+    [Obsolete(WithPolicyObsoleteWarning)]
     public static IFlurlRequest WithPolicy(this Url request, IAsyncPolicy<HttpResponseMessage> policy) => WithPolicy(new FlurlRequest(request), policy);
+    [Obsolete(WithPolicyObsoleteWarning)]
     public static IFlurlRequest WithPolicy(this IFlurlRequest request, IAsyncPolicy<HttpResponseMessage> policy)
     {
         return new PollyPolicyHttpResponseRequest(request, policy);
