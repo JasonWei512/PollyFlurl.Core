@@ -25,12 +25,14 @@ internal abstract class RequestWrapper : IFlurlRequest
     public abstract Task<IFlurlResponse> SendAsync(HttpMethod verb, HttpContent? content = null, HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead, CancellationToken cancellationToken = default);
 }
 
+#region ResiliencePipeline
+
 /// <summary> Wrap a flurl request pipeline</summary>
-internal class PollyRequestFlurlResponse : RequestWrapper
+internal class PollyPipelineRequestFlurlResponse : RequestWrapper
 {
     private readonly ResiliencePipeline<IFlurlResponse> pipeline;
 
-    public PollyRequestFlurlResponse(IFlurlRequest innerRequest, ResiliencePipeline<IFlurlResponse> pipeline) : base(innerRequest)
+    public PollyPipelineRequestFlurlResponse(IFlurlRequest innerRequest, ResiliencePipeline<IFlurlResponse> pipeline) : base(innerRequest)
     {
         this.pipeline = pipeline;
     }
@@ -42,11 +44,11 @@ internal class PollyRequestFlurlResponse : RequestWrapper
 }
 
 /// <summary> Wrap a generic pipeline </summary>
-internal class PollyRequest : RequestWrapper
+internal class PollyPipelineRequest : RequestWrapper
 {
     private readonly ResiliencePipeline pipeline;
 
-    public PollyRequest(IFlurlRequest innerRequest, ResiliencePipeline pipeline) : base(innerRequest)
+    public PollyPipelineRequest(IFlurlRequest innerRequest, ResiliencePipeline pipeline) : base(innerRequest)
     {
         this.pipeline = pipeline;
     }
@@ -58,11 +60,11 @@ internal class PollyRequest : RequestWrapper
 }
 
 /// <summary> Wrap a http response pipeline </summary>
-internal class PollyHttpResponseRequest : RequestWrapper
+internal class PollyPipelineHttpResponseRequest : RequestWrapper
 {
     private readonly ResiliencePipeline<HttpResponseMessage> pipeline;
 
-    public PollyHttpResponseRequest(IFlurlRequest innerRequest, ResiliencePipeline<HttpResponseMessage> pipeline) : base(innerRequest)
+    public PollyPipelineHttpResponseRequest(IFlurlRequest innerRequest, ResiliencePipeline<HttpResponseMessage> pipeline) : base(innerRequest)
     {
         this.pipeline = pipeline;
     }
@@ -85,3 +87,66 @@ internal class PollyHttpResponseRequest : RequestWrapper
         return new FlurlResponse(response);
     }
 }
+
+#endregion
+
+#region Policy (legacy)
+
+/// <summary> Wrap a flurl request policy</summary>
+internal class PollyPolicyRequestFlurlResponse : RequestWrapper
+{
+    private readonly IAsyncPolicy<IFlurlResponse> policy;
+
+    public PollyPolicyRequestFlurlResponse(IFlurlRequest innerRequest, IAsyncPolicy<IFlurlResponse> policy) : base(innerRequest)
+    {
+        this.policy = policy;
+    }
+
+    public override Task<IFlurlResponse> SendAsync(HttpMethod verb, HttpContent? content = null, HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead, CancellationToken cancellationToken = default) =>
+        policy.ExecuteAsync(() => innerRequest.SendAsync(verb, content, completionOption, cancellationToken));
+}
+
+/// <summary> Wrap a generic policy </summary>
+internal class PollyPolicyRequest : RequestWrapper
+{
+    private readonly IAsyncPolicy policy;
+
+    public PollyPolicyRequest(IFlurlRequest innerRequest, IAsyncPolicy policy) : base(innerRequest)
+    {
+        this.policy = policy;
+    }
+
+    public override Task<IFlurlResponse> SendAsync(HttpMethod verb, HttpContent? content = null, HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead, CancellationToken cancellationToken = default) =>
+        policy.ExecuteAsync(() => innerRequest.SendAsync(verb, content, completionOption, cancellationToken));
+}
+
+/// <summary> Wrap a http response policy </summary>
+internal class PollyPolicyHttpResponseRequest : RequestWrapper
+{
+    private readonly IAsyncPolicy<HttpResponseMessage> policy;
+
+    public PollyPolicyHttpResponseRequest(IFlurlRequest innerRequest, IAsyncPolicy<HttpResponseMessage> policy) : base(innerRequest)
+    {
+        this.policy = policy;
+    }
+
+    public override async Task<IFlurlResponse> SendAsync(HttpMethod verb, HttpContent? content = null, HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead, CancellationToken cancellationToken = default)
+    {
+        var response = await policy.ExecuteAsync(async () =>
+        {
+            try
+            {
+                var response = await innerRequest.SendAsync(verb, content, completionOption, cancellationToken);
+                return response.ResponseMessage;
+            }
+            catch (FlurlHttpException ex)
+            {
+                return ex.Call.Response.ResponseMessage;
+            }
+        });
+
+        return new FlurlResponse(response);
+    }
+}
+
+#endregion

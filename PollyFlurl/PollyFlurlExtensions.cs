@@ -4,25 +4,27 @@ using System.Net;
 namespace PollyFlurl;
 public static class PollyFlurlExtensions
 {
+    #region ResiliencePipeline
+
     public static IFlurlRequest WithPipeline(this string request, ResiliencePipeline<IFlurlResponse> pipeline) => WithPipeline(new Url(request), pipeline);
     public static IFlurlRequest WithPipeline(this Url request, ResiliencePipeline<IFlurlResponse> pipeline) => WithPipeline(new FlurlRequest(request), pipeline);
     public static IFlurlRequest WithPipeline(this IFlurlRequest request, ResiliencePipeline<IFlurlResponse> pipeline)
     {
-        return new PollyRequestFlurlResponse(request, pipeline);
+        return new PollyPipelineRequestFlurlResponse(request, pipeline);
     }
 
     public static IFlurlRequest WithPipeline(this string request, ResiliencePipeline pipeline) => WithPipeline(new Url(request), pipeline);
     public static IFlurlRequest WithPipeline(this Url request, ResiliencePipeline pipeline) => WithPipeline(new FlurlRequest(request), pipeline);
     public static IFlurlRequest WithPipeline(this IFlurlRequest request, ResiliencePipeline pipeline)
     {
-        return new PollyRequest(request, pipeline);
+        return new PollyPipelineRequest(request, pipeline);
     }
 
     public static IFlurlRequest WithPipeline(this string request, ResiliencePipeline<HttpResponseMessage> pipeline) => WithPipeline(new Url(request), pipeline);
     public static IFlurlRequest WithPipeline(this Url request, ResiliencePipeline<HttpResponseMessage> pipeline) => WithPipeline(new FlurlRequest(request), pipeline);
     public static IFlurlRequest WithPipeline(this IFlurlRequest request, ResiliencePipeline<HttpResponseMessage> pipeline)
     {
-        return new PollyHttpResponseRequest(request, pipeline);
+        return new PollyPipelineHttpResponseRequest(request, pipeline);
     }
 
     static readonly HttpStatusCode[] httpStatusCodesWorthRetrying = {
@@ -48,4 +50,31 @@ public static class PollyFlurlExtensions
             })
             .Build();
     });
+
+    #endregion
+
+    #region Policy (legacy)
+
+    public static IFlurlRequest WithPolicy(this string request, IAsyncPolicy<IFlurlResponse> policy) => WithPolicy(new Url(request), policy);
+    public static IFlurlRequest WithPolicy(this Url request, IAsyncPolicy<IFlurlResponse> policy) => WithPolicy(new FlurlRequest(request), policy);
+    public static IFlurlRequest WithPolicy(this IFlurlRequest request, IAsyncPolicy<IFlurlResponse> policy)
+    {
+        return new PollyPolicyRequestFlurlResponse(request, policy);
+    }
+
+    public static IFlurlRequest WithPolicy(this string request, IAsyncPolicy policy) => WithPolicy(new Url(request), policy);
+    public static IFlurlRequest WithPolicy(this Url request, IAsyncPolicy policy) => WithPolicy(new FlurlRequest(request), policy);
+    public static IFlurlRequest WithPolicy(this IFlurlRequest request, IAsyncPolicy policy)
+    {
+        return new PollyPolicyRequest(request, policy);
+    }
+
+    public static IFlurlRequest WithPolicy(this string request, IAsyncPolicy<HttpResponseMessage> policy) => WithPolicy(new Url(request), policy);
+    public static IFlurlRequest WithPolicy(this Url request, IAsyncPolicy<HttpResponseMessage> policy) => WithPolicy(new FlurlRequest(request), policy);
+    public static IFlurlRequest WithPolicy(this IFlurlRequest request, IAsyncPolicy<HttpResponseMessage> policy)
+    {
+        return new PollyPolicyHttpResponseRequest(request, policy);
+    }
+
+    #endregion
 }
