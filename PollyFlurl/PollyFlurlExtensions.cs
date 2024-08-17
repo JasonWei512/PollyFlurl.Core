@@ -55,7 +55,7 @@ public static class PollyFlurlExtensions
 
     #region Policy (legacy)
 
-    const string WithPolicyObsoleteWarning = @"Use "".WithPipeline(ResiliencePipeline pipeline)"" instead. See Polly v8's doc for more info: https://www.pollydocs.org/migration-v8.html#configuring-strategies-in-v8";
+    private const string WithPolicyObsoleteWarning = @"Use "".WithPipeline(ResiliencePipeline pipeline)"" instead. See Polly v8's doc for more info: https://www.pollydocs.org/migration-v8.html#configuring-strategies-in-v8";
 
     [Obsolete(WithPolicyObsoleteWarning)]
     public static IFlurlRequest WithPolicy(this string request, IAsyncPolicy<IFlurlResponse> policy) => WithPolicy(new Url(request), policy);
